@@ -1,0 +1,30 @@
+Contenido del panel
+
+#### HOJA 1
+## TABLAS (todo en un "table" con varias pestañas)
+
+- Registro clase a clases (avance de resultados de aprendizaje)
+
+- Tabla de notas de resumen general: notas por prueba, nota de controles, nota de presentación (se saber las ponderaciones por prueba) y nota de examen (se necestia ponderación). Al final de la tabla, haber un resumen por columna, en este caso sería el promedio en cada una.
+
+- Tabla de notas por pregunta de cada prueba: Puntaje por pregunta y nota final (escala al 60%). Al final de la tabla, debe hacer un resumen por columna, en este caso sería el promedio del porcentaje de logro por pregunta (para hacer esto, en la primera fila deben estar los puntajes ideales por pregunta). Además, se debe agregar un un enlace de las preguntas con los resultados de aprendizaje a los que tributan (estos RE deben estar consolidados en otra base, o deben ser ingresados en otra hoja de la planilla en la se esté ingresando la información).
+
+Se debe considerar la asistencia, pero lo veré posterior a la construcción de la tabla, debido a que debe tener su propia base de datos. Se considerará la asistencia con respecto a las clases actuales y no a las programadas, para evitar el problema de clases no realizadas y las recuperadas.
+
+- Tabla de controles: debe contener la nota por controles y la nota final de controles (promedio aritmético). Se debe agrear una final final con los promedios por controles.
+
+Consideraciones de las 4 tablas anteriores: se deberá obtener las información desde Google Drive, las carpetas a cada profe se reconocerán manualmente, por lo que lo ideal es no cambiar el nombre de las carpetas y tener un formato determinado del contenido que se ingresa en las tablas.
+
+#### HOJA 2
+
+Resumen de resultados (indicadores duros) por profesor, asignatura (en general, considerando toda las secciones) y secciones (dadas las asignaturas).
+
+## FILTROS
+
+Se debe contar con los filtros de Nombre del profesor, RUT del profesor, Sigla de asignatura (filtrar las secciones), secciones de las asignaturas. Toda está información hay que consolidarla en un BBDD para poder usarla.
+
+## DESCARGAS: todas las tablas se deben poder descargar.
+
+##### POSTERIOR #####
+
+## GRÁFICOS: se analizarán posterior a la construcción anterior
