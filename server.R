@@ -80,35 +80,94 @@ server = function(input, output, session){
       
       if (curso$Nombre %in% aux.cursos_seccion) { # Filtramos los cursos correspondientes al profesor
         
-        # Primero obtenemos las ponderaciones
-        aux.ponderacion = curso$Documentos[[1]]
+        aux.ponderacion = curso$Documentos[[1]] # Guardamos las ponderaciones
+        aux.length = dim(curso$Documentos[[1]])[1]
+        aux.ponderacion = aux.ponderacion[c((aux.length-1):aux.length, 1:(aux.length-2)),] # Control, Examen, Pruebas
         # print(aux.ponderacion)
         
         ### Obtenemos los promedios de las pruebas, controles y exámenes
         aux.promedios = lapply(as.list(curso$Hoja[-1]), function(evaluacion){ # Información por prueba
-          # print(evaluacion)
-          
+          ### Obtenemos métricas generales por curso, considerando el orden en que son devueltos los datos (siempre el mismo para todos los profesores)
+          ### Controles, Examen y el resto Pruebas en orden correlativo (Prueba 1, Prueba 2, ...)
           if(sum(grepl("Prueba", evaluacion), grepl("Examen", evaluacion)) == 1){ ## Notas de pruebas y examen
             return(notas_evaluacion(curso$Documentos[which(evaluacion == curso$Hoja)]))
           } else { ## Nota de controles
             # print(curso$Documentos[which(evaluacion == curso$Hoja)])
             return(notas_control(curso$Documentos[which(evaluacion == curso$Hoja)]))
-          }
-          
+          }  
         })
         
-        ### Obtenemos métricas generales por curso, considerando el orden en que son devueltos los datos (siempre el mismo para todos los profesores)
-        ### Controles, Examen y el resto Pruebas en orden correlativo (Prueba 1, Prueba 2, ...)
+        # Transformamos todas las notas en nota final en el curso
+        aux.promedios = matrix(unlist(aux.promedios), byrow = T, nrow = length(aux.promedios[[1]])) # Pasamos de lista a matriz (cada estudiante una columna)
+        # Esto nos deja con cada alumno en una fila, ahora multiplicamos por los ponderadores y obtenemos la nota final de cada uno
+        aux.promedios = apply(aux.promedios, 1, function(notas.alumno){
+          # print(notas.alumno)
+          NP = sum(notas.alumno[-2]*aux.ponderacion[-2,2]) # Nota de presentación
+          NF = notas.alumno[2]*aux.ponderacion[2,2] + NP*(1-aux.ponderacion[2,2])
+          return(NF)
+        })
+        
+        # Finalmente obtenemos la media general del curso
+        aux.promedios = mean(aux.promedios)
         
         # ABORDAR EL HECHO DE TENER NOTAS INCOMPLETAS, USAR na.omit AL MOMENTO DE SACAR PROMEDIOS EN TODO EL CÓDIGO
-        return(aux.promedios) # Promedio de de los promedios de las pruebas. También puede ser modificado por el promedio de general del
+        return(list("Curso" = curso$Nombre, "Pomedio" = aux.promedios)) # Promedio de de los promedios de las pruebas.
+        # También puede ser modificado por el promedio de general del
         # curso considerando examen y controles. La idea es sacar una métrica general por curso, de esta forma, si se desea ver el detalle, se consulta 
         # las pestañas por curso y sección.
       }
     })
-    # aux.bbdd = aux.bbdd[!is.na(aux.bbdd)]
+    
+    aux.bbdd = aux.bbdd[!sapply(aux.bbdd, is.null)]
+    aux.bbdd = as.data.frame(matrix(unlist(aux.bbdd), byrow = T, ncol = 2))
+    colnames(aux.bbdd) = c("Curso", "Promedio")
+    aux.bbdd$Promedio = round(as.numeric(aux.bbdd$Promedio),1)
     return(aux.bbdd)
   }
   
- 
+  metricas_generales.p1 = metricas_generales("Profesor 1")
+  metricas_generales.p2 = metricas_generales("Profesor 2")
+  
+  ###################### Elementos en los paneles ############################
+  
+  # Métricas por profesor: resumen general
+  
+  output$valueboxes_p1 = renderUI({
+    lapply(1:dim(metricas_generales.p1)[1], function(i){
+      valueBox(metricas_generales.p1[i,2],
+               format(metricas_generales.p1[i,1], nsmall = 1),
+               width = 2, color = "blue")
+    })
+  })
+  
+  output$valueboxes_p2 = renderUI({
+    lapply(1:dim(metricas_generales.p2)[1], function(i){
+      valueBox(metricas_generales.p2[i,2],
+               format(metricas_generales.p1[i,1], nsmall = 1),
+               width = 2, color = "blue")
+    })
+  })
+  
+  # Métricas por curso
+  
+  output$resultados_cursos = renderPlot({
+    aux = rbind(metricas_generales.p1, metricas_generales.p2)
+    aux$Curso = matrix(unlist(strsplit(aux$Curso, " - ")), byrow = T, ncol = 2)[,1]
+    aux = apply(as.matrix(unique(aux$Curso)), 1, function(solo_curso){
+      solo_curso = c(solo_curso, as.character(mean(aux$Promedio[aux$Curso == solo_curso])))
+      return(solo_curso)
+    })
+    aux = as.data.frame(t(aux))
+    colnames(aux) = c("Curso", "Promedio")
+    
+    g = ggplot(data = aux, aes(x = Curso, y = Promedio)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      labs(title = "Promedio por curso") +
+      geom_text(mapping = aes(label = Promedio), vjust = -0.4, position = "stack")
+    g    
+      
+    # Añadir tasa de aprobación media por curso o tasa de aprobación general por curso
+    
+  })
+  
 }

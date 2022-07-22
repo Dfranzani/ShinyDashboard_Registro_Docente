@@ -8,10 +8,11 @@ library(viridis) # paleta de colores
 library(kableExtra) # renderizado de tablas
 library(dplyr) # tubería
 library(ggpubr) # agrupar gráficos de ggplot con una sola leyenda
-# library(plotly) # gráficos interactivos (se puede combinar con ggplot fácilmente)
+library(plotly) # gráficos interactivos (se puede combinar con ggplot fácilmente)
 library(googlesheets4) # Conección a la cuenta de Google Drive
 library(Cairo) # mejora resolución y renderizado de gráficos
-library(shinyjs)
+library(shinyjs) # modificar objetos shiny con JS
+library(DT) # paquete para renderizar DataTable
 options(shiny.usecairo = T)
 
 ########################### Elementos generales del panel ###########################
@@ -41,6 +42,20 @@ sidebar = dashboardSidebar(
 
 ########################### Elementos de paneles: Hoja 1 y 2 ###########################
 
+#### Profesor 1
+
+promedios_profesor1 = uiOutput("valueboxes_p1")
+# Añadir tasas de aprobación del curso (ver al final)
+
+#### Profesor 2
+
+promedios_profesor2 = uiOutput("valueboxes_p2")
+# Añadir tasas de aprobación del curso (ver al final)
+
+#### Asignaturas
+
+promedios_cursos = plotOutput("resultados_cursos")
+
 ########################### Distribución de paneles: Hoja 1 y 2 ###########################
 
 # Como la cantidad de profesor es baja podemos crear los paneles manualmente, pero lo ideal es automatizar
@@ -51,7 +66,12 @@ all1 = fluidPage(
     box(id = "Profesor1", width = 12, solidHeader = TRUE, collapsed = TRUE, collapsible = TRUE,
         title = "Profesor 1",
         tabBox(id = "Resumen1", width = 12,
-              tabPanel(id = "p1r1.1", title = "Resumen General"),
+              tabPanel(id = "p1r1.1", title = "Resumen General",
+                       fluidRow(
+                         column(width = 12, h3("Promedio general por curso")),
+                         column(width = 12, promedios_profesor1)
+                         )
+                       ),
               tabPanel(id = "p1r1.2", title = "Curso 1"),
               tabPanel(id = "p1r1.3", title = "Curso 2")
               # Solo rellenar con tablas
@@ -60,7 +80,12 @@ all1 = fluidPage(
     box(id = "Profesor2", width = 12, solidHeader = TRUE, collapsed = TRUE, collapsible = TRUE,
         title = "Profesor 2",
         tabBox(id = "Resumen2", width = 12,
-               tabPanel(id = "p2r2.1", title = "Resumen General"),
+               tabPanel(id = "p2r2.1", title = "Resumen General",
+                        fluidRow(
+                          column(width = 12, h3("Promedio general por curso")),
+                          column(width = 12, promedios_profesor2)
+                          )
+                        ),
                tabPanel(id = "p2r2.2", title = "Curso 1"),
                tabPanel(id = "p2r2.3", title = "Curso 2")
                )
@@ -70,7 +95,10 @@ all1 = fluidPage(
 all2 = fluidPage(
   fluidRow(
     box(id = "Resumen_asigs", width = 12, solidHeader = TRUE, collapsed = FALSE, collapsible = TRUE,
-        title = "Resumen de Asignaturas")
+        title = "Resumen de Cursos",
+        fluidRow(
+          column(width = 6, promedios_cursos)
+        ))
     # Añadir resumen de la signatura por profesor y uno general (todo en la misma tabla y añadir gráfico)
   )
 )
