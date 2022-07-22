@@ -43,44 +43,70 @@ server = function(input, output, session){
   # 1) Panel con métricas generales del profesor: Promedio general de cada curso (valuebox para cada promedio)
   # 2) Resultados por curso: Notas pruebas y controles, nota de presentación, nota del examen y nota final
   
-  metricas_generales = function(profesor){
+  notas_evaluacion = function(prueba){ # Calcula los promedios por estudiante en un prueba y examen
+    prueba = as.data.frame(prueba)
+    ideal = sum(as.numeric(unlist(prueba[2,-1]))) # Puntaje ideal de la prueba
+    prueba = as.matrix(prueba[-c(1:2),]) # Quitamos la primera y segunda fila que contiene los resultados de aprendizaje y puntaje ideal
+    cols = colnames(prueba) # Guardamos los nombre de columna para ocuparlos como dimensión
+    # Realizamos conversión a matriz porque es un dataframe de lista, ya que contiene distintos tipos de datos por columna
+    prueba = matrix(as.character(unlist(prueba)), byrow = F, ncol = length(cols))[,-1] # Eliminamos la columna de nombres
+    notas.por.prueba = apply(prueba, 1, function(puntos){ # Nota por estudiante en la prueba
+      puntos = as.numeric(puntos)
+      puntos = sum(puntos)
+      if (puntos <= ideal) { # Escala del 60%
+        # (0,1), (60%, 4)
+        corte = 0.6*ideal
+        return(3/corte*puntos + 1)
+      } else {
+        # (60%, 4) (ideal, 7)
+        return(3/(ideal - corte)*(puntos - ideal) + 7)
+      }
+    })
+    return(notas.por.prueba)
+  }
+  
+  notas_control = function(control){ # Calcula los promedios por estudiante en un control
+    control = as.data.frame(control)
+    control = control[,-1]
+    notas.por.control = apply(control, 1, function(notas){ # Nota por estudiante en la prueba
+      return(mean(as.numeric(notas))) # Revisar cuando haya notas faltantes
+    })
+  }
+  
+  metricas_generales = function(profesor){ # Función para determinar información en el primer panel
     aux = subset(listado.cursos, Profesor == profesor)
     aux.cursos_seccion = paste(aux$Curso, "- seccion", aux$Sección, sep = " ")
     aux.bbdd = lapply(docs, function(curso){ # listado de las métricas por profesor
+      
       if (curso$Nombre %in% aux.cursos_seccion) { # Filtramos los cursos correspondientes al profesor
-        # Calculamos inmediatamente los promedios por curso
-        # Primero obtenemos las ponderaciones: primer están las pruebas, luego los controles y finalmente el examen
+        
+        # Primero obtenemos las ponderaciones
         aux.ponderacion = curso$Documentos[[1]]
-        # Obtenemos los promedios de las pruebas, controles y exámenes, las pruebas empiezan siempre en la posición 4 de la lista
-        aux.promedio.pruebas = lapply(curso$Documentos[4:length(curso$Documentos)], function(prueba){ # Información por prueba
-          # print(prueba)
-          ## Promedios prueba
-          ideal = sum(as.numeric(unlist(prueba[2,-1]))) # Puntaje ideal de la prueba
-          prueba = as.matrix(prueba[-c(1:2),]) # Quitamos la primera y segunda fila que contiene los resultados de aprendizaje y puntaje ideal
-          cols = colnames(prueba) # Guardamos los nombre de columna, para ocuparlos como dimensión
-          # Realizamos conversión a matriz porque es un dataframe de lista, ya que contiene distintos tipos de datos por columna
-          prueba = matrix(as.character(unlist(prueba)), byrow = F, ncol = length(cols))[,-1] # Eliminamos lo nombres
-          notas.por.prueba = apply(prueba, 1, function(puntos){ # Nota por estudiante
-            puntos = as.numeric(puntos)
-            puntos = sum(puntos)
-            if (puntos <= ideal) {
-              # (0,1), (60%, 4)
-              corte = 0.6*ideal
-              return(3/corte*puntos + 1)
-            } else {
-              # (60%, 4) (ideal, 7)
-              return(3/(ideal - corte)*(puntos - ideal) + 7)
-            }
-          })
-          promedio.todas.las.prueba = mean(notas.por.prueba) # Promedio de las notas obtenidas por los estudiantes
-          return(promedio.todas.las.prueba)
-          ## Promedio Controles y Exámenes
+        # print(aux.ponderacion)
+        
+        ### Obtenemos los promedios de las pruebas, controles y exámenes
+        aux.promedios = lapply(as.list(curso$Hoja[-1]), function(evaluacion){ # Información por prueba
+          # print(evaluacion)
+          
+          if(sum(grepl("Prueba", evaluacion), grepl("Examen", evaluacion)) == 1){ ## Notas de pruebas y examen
+            return(notas_evaluacion(curso$Documentos[which(evaluacion == curso$Hoja)]))
+          } else { ## Nota de controles
+            # print(curso$Documentos[which(evaluacion == curso$Hoja)])
+            return(notas_control(curso$Documentos[which(evaluacion == curso$Hoja)]))
+          }
+          
         })
-        # ABORDAR EL HECHO DE TENER NOTAS INCOMPLEATAS, USAR na.omit AL MOMENTO DE SACAR PROMEDIOS EN TODO EL CÓDIGO
-        return(mean(unlist(aux.promedio.pruebas)))
+        
+        ### Obtenemos métricas generales por curso, considerando el orden en que son devueltos los datos (siempre el mismo para todos los profesores)
+        ### Controles, Examen y el resto Pruebas en orden correlativo (Prueba 1, Prueba 2, ...)
+        
+        # ABORDAR EL HECHO DE TENER NOTAS INCOMPLETAS, USAR na.omit AL MOMENTO DE SACAR PROMEDIOS EN TODO EL CÓDIGO
+        return(aux.promedios) # Promedio de de los promedios de las pruebas. También puede ser modificado por el promedio de general del
+        # curso considerando examen y controles. La idea es sacar una métrica general por curso, de esta forma, si se desea ver el detalle, se consulta 
+        # las pestañas por curso y sección.
       }
     })
-    aux.bbdd = aux.bbdd[!is.na(aux.bbdd)]
+    # aux.bbdd = aux.bbdd[!is.na(aux.bbdd)]
     return(aux.bbdd)
   }
   
