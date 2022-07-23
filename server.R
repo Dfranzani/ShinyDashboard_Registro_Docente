@@ -1,5 +1,6 @@
 server = function(input, output, session){
   
+  ######################### CONTENIDO #############################
   # Conexión a Google Drive y carga de bases de datos
   
   # Set authentication token to be stored in a folder called `.secrets`
@@ -39,6 +40,8 @@ server = function(input, output, session){
     return(list("Nombre" = nombre, "Hoja" = hojas, "Documentos" = doc))
   })
 
+  ######################## FUNCIONES ###########################
+  
   # Función para elaborar paneles de profesor
   # 1) Panel con métricas generales del profesor: Promedio general de cada curso (valuebox para cada promedio)
   # 2) Resultados por curso: Notas pruebas y controles, nota de presentación, nota del examen y nota final
@@ -72,6 +75,8 @@ server = function(input, output, session){
       return(mean(as.numeric(notas))) # Revisar cuando haya notas faltantes
     })
   }
+  
+  ########################### MÉTRICAS ###################################
   
   metricas_generales = function(profesor){ # Función para determinar información en el primer panel
     aux = subset(listado.cursos, Profesor == profesor)
@@ -125,10 +130,70 @@ server = function(input, output, session){
     return(aux.bbdd)
   }
   
+  informacion_cursos = function(profesor){ # Función para determinar información en el primer panel
+    aux.nombres_cursos = c() # Lo guardamos para darle nombre a la lista final
+    aux = subset(listado.cursos, Profesor == profesor)
+    aux.cursos_seccion = paste(aux$Curso, "- seccion", aux$Sección, sep = " ")
+    aux.bbdd = lapply(docs, function(curso){ # listado de las métricas por profesor
+      
+      if (curso$Nombre %in% aux.cursos_seccion) { # Filtramos los cursos correspondientes al profesor
+        aux.nombres_cursos <<- c(aux.nombres_cursos, curso$Nombre)
+        aux.nombre_alumnos = curso$Documentos[[3]]$Estudiante[-c(1:2)]
+        aux.ponderacion = curso$Documentos[[1]] # Guardamos las ponderaciones
+        aux.length = dim(curso$Documentos[[1]])[1]
+        aux.ponderacion = aux.ponderacion[c((aux.length-1):aux.length, 1:(aux.length-2)),] # Control, Examen, Pruebas
+        
+        ### Obtenemos los promedios de las pruebas, controles y exámenes
+        aux.promedios = lapply(as.list(curso$Hoja[-1]), function(evaluacion){ # Información por prueba
+          ### Obtenemos métricas generales por curso, considerando el orden en que son devueltos los datos (siempre el mismo para todos los profesores)
+          ### Controles, Examen y el resto Pruebas en orden correlativo (Prueba 1, Prueba 2, ...)
+          if(sum(grepl("Prueba", evaluacion), grepl("Examen", evaluacion)) == 1){ ## Notas de pruebas y examen
+            return(notas_evaluacion(curso$Documentos[which(evaluacion == curso$Hoja)]))
+          } else { ## Nota de controles
+            return(notas_control(curso$Documentos[which(evaluacion == curso$Hoja)]))
+          }
+        })
+        
+        # Construcción de la tabla
+        aux.promedios = matrix(unlist(aux.promedios), byrow = F, ncol = length(aux.promedios))
+        aux.promedios = as.data.frame(aux.promedios)
+        colnames(aux.promedios) = curso$Hoja[-1]
+        
+        # Agregamos nota de presentación y final
+        aux.promedios$NP = apply(aux.promedios, 1, function(notas.alumno){
+          NP = sum(notas.alumno[-2]*aux.ponderacion[-2,2]) # Nota de presentación
+          return(NP)
+        })
+        
+        aux.promedios$NF = apply(aux.promedios[-c(dim(aux.promedios)[2])], 1, function(notas.alumno){
+          NP = sum(notas.alumno[-2]*aux.ponderacion[-2,2]) # Nota de presentación
+          NF = notas.alumno[2]*aux.ponderacion[2,2] + NP*(1-aux.ponderacion[2,2]) # Nota final
+          return(NF)
+        })
+        
+        aux.promedios= aux.promedios[c(which(grepl("Prueba", colnames(aux.promedios))),
+                                       which(colnames(aux.promedios) == "Controles"),
+                                       which(colnames(aux.promedios) == "NP"),
+                                       which(colnames(aux.promedios) == "Examen"),
+                                       which(colnames(aux.promedios) == "NF"))]
+        aux.promedios = round(aux.promedios, 1)
+        aux.promedios = rbind(aux.promedios, round(colMeans(aux.promedios), 1))
+        rownames(aux.promedios) = c(aux.nombre_alumnos, "Promedio")
+        return(aux.promedios)
+      }
+    })
+    
+    aux.bbdd = aux.bbdd[!sapply(aux.bbdd, is.null)]
+    names(aux.bbdd) = aux.nombres_cursos
+    return(aux.bbdd)
+  }
+  
   metricas_generales.p1 = metricas_generales("Profesor 1")
   metricas_generales.p2 = metricas_generales("Profesor 2")
+  informacion_cursos.p1 = informacion_cursos("Profesor 1")
+  informacion_cursos.p2 = informacion_cursos("Profesor 2")
   
-  ###################### Elementos en los paneles ############################
+  ###################### ELEMENTOS DE LOS PANELES ############################
   
   # Métricas por profesor: resumen general
   
@@ -167,7 +232,10 @@ server = function(input, output, session){
     g    
       
     # Añadir tasa de aprobación media por curso o tasa de aprobación general por curso
-    
+  })
+  
+  output$p1_c1 = DT::renderDataTable({
+    DT::datatable(informacion_cursos.p1[[1]], filter = "top")
   })
   
 }

@@ -1,17 +1,17 @@
 library(shiny) # paquete principal del panel de visualización
 library(shinydashboard) # paquete que modifica la estructura de comandos shiny (algunos), pero da un mejor aspecto visual
-library(fmsb) # gráfico de araña
+# library(fmsb) # gráfico de araña
 library(openxlsx) # carga de archivos
 library(ggplot2) # gráficos
-library(gridExtra) # agrupar gráficos de ggplot
+# library(gridExtra) # agrupar gráficos de ggplot
 library(viridis) # paleta de colores
-library(kableExtra) # renderizado de tablas
+# library(kableExtra) # renderizado de tablas
 library(dplyr) # tubería
-library(ggpubr) # agrupar gráficos de ggplot con una sola leyenda
-library(plotly) # gráficos interactivos (se puede combinar con ggplot fácilmente)
+# library(ggpubr) # agrupar gráficos de ggplot con una sola leyenda
+# library(plotly) # gráficos interactivos (se puede combinar con ggplot fácilmente)
 library(googlesheets4) # Conección a la cuenta de Google Drive
 library(Cairo) # mejora resolución y renderizado de gráficos
-library(shinyjs) # modificar objetos shiny con JS
+# library(shinyjs) # modificar objetos shiny con JS
 library(DT) # paquete para renderizar DataTable
 options(shiny.usecairo = T)
 
@@ -46,6 +46,7 @@ sidebar = dashboardSidebar(
 
 promedios_profesor1 = uiOutput("valueboxes_p1")
 # Añadir tasas de aprobación del curso (ver al final)
+profesor1_curso1 =  DT::dataTableOutput("p1_c1")
 
 #### Profesor 2
 
@@ -72,7 +73,7 @@ all1 = fluidPage(
                          column(width = 12, promedios_profesor1)
                          )
                        ),
-              tabPanel(id = "p1r1.2", title = "Curso 1"),
+              tabPanel(id = "p1r1.2", title = "Curso 1", profesor1_curso1),
               tabPanel(id = "p1r1.3", title = "Curso 2")
               # Solo rellenar con tablas
               )
@@ -92,6 +93,7 @@ all1 = fluidPage(
         )
   )
 )
+
 all2 = fluidPage(
   fluidRow(
     box(id = "Resumen_asigs", width = 12, solidHeader = TRUE, collapsed = FALSE, collapsible = TRUE,
