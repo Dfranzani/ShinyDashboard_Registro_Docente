@@ -76,6 +76,61 @@ server = function(input, output, session){
     })
   }
   
+  tabla_de_notas_evaluacion = function(prueba, nombre){ # Diseña la tabla con los desglose de puntajes por pregunta en la prueba por cada estudiante
+    estudiantes = prueba[[1]]$Estudiante[-c(1:2)] # Guardamos los nombres de los estudiantes
+    prueba = as.data.frame(prueba)
+    ideal = sum(as.numeric(unlist(prueba[2,-1]))) # Puntaje ideal de la prueba
+    aux.ideal = as.numeric(unlist(prueba[2,-1])) # Puntos ideales por pregunta
+    RE = as.matrix(prueba[1,-1]) # Guardamos los resultados de aprendizaje de la evaluación
+    prueba = as.matrix(prueba[-c(1:2),]) # Quitamos la primera y segunda fila que contiene los resultados de aprendizaje y puntaje ideal
+    cols = colnames(prueba) # Guardamos los nombre de columna para ocuparlos como dimensión
+    # Realizamos conversión a matriz porque es un dataframe de lista, ya que contiene distintos tipos de datos por columna
+    prueba = matrix(as.character(unlist(prueba)), byrow = F, ncol = length(cols))[,-1] # Eliminamos la columna de nombres
+    notas.por.prueba = apply(prueba, 1, function(puntos){ # Nota por estudiante en la prueba
+      puntos = as.numeric(puntos)
+      puntos = sum(puntos)
+      if (puntos <= ideal) { # Escala del 60%
+        # (0,1), (60%, 4)
+        corte = 0.6*ideal
+        return(round(3/corte*puntos + 1, 1))
+      } else {
+        # (60%, 4) (ideal, 7)
+        return(round(3/(ideal - corte)*(puntos - ideal) + 7, 1))
+      }
+    })
+    
+    logro.promedio = apply(prueba, 1, function(puntos){
+      return(as.numeric(puntos)/aux.ideal)
+    })
+    
+    logro.promedio = paste(format(round(rowSums(logro.promedio)/3*100,0), nsmall = 0), "%", sep = "")
+    logro.promedio = c(logro.promedio, round(mean(notas.por.prueba), 1))
+    
+    prueba = as.data.frame(cbind(prueba, notas.por.prueba))
+    prueba = as.data.frame(rbind(prueba, logro.promedio))
+    row.names(prueba) = c(estudiantes, "Logro promedio")
+    colnames(prueba) = c(paste0("P", 1:length(cols[-1])), "Nota")
+    prueba = list(prueba, RE)
+    names(prueba) = c(nombre, " RE")
+    return(prueba)
+  }
+  
+  tabla_de_notas_control = function(control, nombre){ # Diseña la tabla con los desglose de puntajes por pregunta en controles por cada estudiante
+    estudiantes = control[[1]]$Estudiante # Guardamos los nombres de los estudiantes
+    control = as.data.frame(control)
+    control = control[,-1]
+    notas.por.control = apply(control, 1, function(notas){ # Nota por estudiante en la prueba
+      return(round(mean(as.numeric(notas)), 1)) # Revisar cuando haya notas faltantes
+    })
+    control = as.data.frame(cbind(control, notas.por.control))
+    control = as.data.frame(rbind(control, round(colMeans(control), 1)))
+    row.names(control) = c(estudiantes, "Promedio")
+    colnames(control) = c(paste0("C", 1:(dim(control)[2]-1)), "NF")
+    control = list(control)
+    names(control) = nombre
+    return(control)
+  }
+  
   ########################### MÉTRICAS ###################################
   
   metricas_generales = function(profesor){ # Función para determinar información en el primer panel
@@ -188,8 +243,48 @@ server = function(input, output, session){
     return(aux.bbdd)
   }
   
+  detalles_evaluaciones = function(profesor){ # Determina el detalles de los estudiantes en las evaluaciones
+    aux.nombres_cursos = c() # Lo guardamos para darle nombre a la lista final
+    aux = subset(listado.cursos, Profesor == profesor)
+    aux.cursos_seccion = paste(aux$Curso, "- seccion", aux$Sección, sep = " ")
+    aux.bbdd = lapply(docs, function(curso){ # listado de las métricas por profesor
+      
+      if (curso$Nombre %in% aux.cursos_seccion) { # Filtramos los cursos correspondientes al profesor
+        aux.nombres_cursos <<- c(aux.nombres_cursos, curso$Nombre)
+        aux.nombre_alumnos = curso$Documentos[[3]]$Estudiante[-c(1:2)]
+        aux.ponderacion = curso$Documentos[[1]] # Guardamos las ponderaciones
+        aux.length = dim(curso$Documentos[[1]])[1]
+        aux.ponderacion = aux.ponderacion[c((aux.length-1):aux.length, 1:(aux.length-2)),] # Control, Examen, Pruebas
+        
+        ### Obtenemos los promedios de las pruebas, controles y exámenes
+        aux.promedios = lapply(as.list(curso$Hoja[-1]), function(evaluacion){ # Información por prueba
+          ### Reportamos toda la información de la prueba
+          ### Notas y resultados de aprendizaje por pregunta
+          if(sum(grepl("Prueba", evaluacion), grepl("Examen", evaluacion)) == 1){ ## Notas de pruebas y examen
+            tabla = tabla_de_notas_evaluacion(curso$Documentos[which(evaluacion == curso$Hoja)],
+                                              evaluacion) # Le damos el nombre para poder identificarlo mejor
+            names(tabla)[1] = evaluacion
+            return(tabla)
+          } else { ## Nota de controles
+            tabla = tabla_de_notas_control(curso$Documentos[which(evaluacion == curso$Hoja)],
+                                           evaluacion) # Le damos el nombre para poder indentificarlo mejor
+            names(tabla)[1] = evaluacion
+            return(tabla)
+          }
+        })
+        
+        return(aux.promedios)
+      }
+    })
+
+    aux.bbdd = aux.bbdd[!sapply(aux.bbdd, is.null)]
+    names(aux.bbdd) = aux.nombres_cursos
+    return(aux.bbdd)
+  }
+  
   metricas_generales.p1 = metricas_generales("Profesor 1")
   metricas_generales.p2 = metricas_generales("Profesor 2")
+  
   informacion_cursos.p1 = informacion_cursos("Profesor 1")
   informacion_cursos.p2 = informacion_cursos("Profesor 2")
   
@@ -234,8 +329,53 @@ server = function(input, output, session){
     # Añadir tasa de aprobación media por curso o tasa de aprobación general por curso
   })
   
-  output$p1_c1 = DT::renderDataTable({
+  output$p1_c1_s1 = DT::renderDataTable({
     DT::datatable(informacion_cursos.p1[[1]], filter = "top")
   })
   
+  output$p1_c1_s2 = DT::renderDataTable({
+    DT::datatable(informacion_cursos.p1[[2]], filter = "top")
+  })
+  
+  output$p2_c1_s3 = DT::renderDataTable({
+    DT::datatable(informacion_cursos.p2[[1]], filter = "top")
+  })
+  
+  output$p2_c2_s1 = DT::renderDataTable({
+    DT::datatable(informacion_cursos.p2[[2]], filter = "top")
+  })
+  
+  # Automatizamos las pestañas de los detalles de curso, sin necesidad de un renderUI
+  # Creamos un proceso que inserte los paneles según el profesor y el curso
+  
+  lapply(as.list(unique(listado.cursos$Profesor)), function(nombre.profesor){
+    # nombre.profesor = "Profesor 1"
+    aux = detalles_evaluaciones(nombre.profesor)
+    cursos = names(aux)
+    lapply(as.list(cursos), function(curso){
+      # curso = cursos[1]
+      lapply(as.list(1:length(aux[[curso]])), function(i){
+        # i = 1
+        aux2 = aux[[curso]]
+        aux.pestana = gsub(" ", "", curso)
+        nombre = ifelse(i == 1, names(aux2[[i]]), names(aux2[[i]])[1])
+        tasa.aprobacion = unlist(aux2[[i]][[1]][dim(aux2[[i]][[1]])[2]])
+        tasa.aprobacion = tasa.aprobacion[-length(tasa.aprobacion)]
+        tasa.aprobacion = paste0(format(round(sum(tasa.aprobacion>=4)/length(tasa.aprobacion)*100,1), nsmall = 1), "%")
+        insertTab(inputId = aux.pestana,
+                  # El primer elemento siempre son los controles
+                  tabPanel(title = nombre,
+                           fluidRow(column(width = 6, DT::renderDataTable(aux2[[i]][[1]])),
+                                    column(width = 6,
+                                           valueBox(tasa.aprobacion,
+                                                    "Tasa de aprobación",
+                                                    width = 4, color = "blue"))
+                                    ))
+        )
+      })
+    })
+  })
+  
+  
+
 }

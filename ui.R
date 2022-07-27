@@ -46,12 +46,15 @@ sidebar = dashboardSidebar(
 
 promedios_profesor1 = uiOutput("valueboxes_p1")
 # Añadir tasas de aprobación del curso (ver al final)
-profesor1_curso1 =  DT::dataTableOutput("p1_c1")
+profesor1_curso1_seccion1 =  DT::dataTableOutput("p1_c1_s1")
+profesor1_curso1_seccion2 =  DT::dataTableOutput("p1_c1_s2")
 
 #### Profesor 2
 
 promedios_profesor2 = uiOutput("valueboxes_p2")
 # Añadir tasas de aprobación del curso (ver al final)
+profesor2_curso1_seccion3 =  DT::dataTableOutput("p2_c1_s3")
+profesor2_curso2_seccion1 =  DT::dataTableOutput("p2_c2_s1")
 
 #### Asignaturas
 
@@ -73,9 +76,19 @@ all1 = fluidPage(
                          column(width = 12, promedios_profesor1)
                          )
                        ),
-              tabPanel(id = "p1r1.2", title = "Curso 1", profesor1_curso1),
-              tabPanel(id = "p1r1.3", title = "Curso 2")
-              # Solo rellenar con tablas
+              tabPanel(id = "c1_s1", title = "Curso 1 - sección 1", profesor1_curso1_seccion1,
+                       hr(),
+                       # Tablas por prueba, automatizaremos el ingreso con insertTab
+                       tabBox(id = "Curso1-seccion1", title = "Detalle de las evaluaciones", width = NULL
+                              # Automatización de los tab panel
+                              )
+                       ),
+              tabPanel(id = "c1_s2", title = "Curso 1 - sección 2", profesor1_curso1_seccion2,
+                       hr(),
+                       tabBox(id = "Curso1-seccion2", title = "Detalle de las evaluaciones", width = NULL
+                              # Automatización de los tab panel
+                              )
+                       )
               )
         ),
     box(id = "Profesor2", width = 12, solidHeader = TRUE, collapsed = TRUE, collapsible = TRUE,
@@ -87,8 +100,18 @@ all1 = fluidPage(
                           column(width = 12, promedios_profesor2)
                           )
                         ),
-               tabPanel(id = "p2r2.2", title = "Curso 1"),
-               tabPanel(id = "p2r2.3", title = "Curso 2")
+               tabPanel(id = "c1_s3", title = "Curso 1 - sección 3", profesor2_curso1_seccion3,
+                        hr(),
+                        tabBox(id = "Curso1-seccion3", title = "Detalle de las evaluaciones", width = NULL
+                               # Automatización de los tab panel
+                               )
+                        ),
+               tabPanel(id = "c2_s1", title = "Curso 2 - sección 1", profesor2_curso2_seccion1,
+                        hr(),
+                        tabBox(id = "Curso2-seccion1", title = "Detalle de las evaluaciones", width = NULL
+                               # Automatización de los tab panel
+                               )
+                        )
                )
         )
   )
