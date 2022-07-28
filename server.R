@@ -28,7 +28,8 @@ server = function(input, output, session){
               "https://docs.google.com/spreadsheets/d/1JLqReXrK7QtoamKSyWhfcSsUh4x7RdCXHm3kuVGJ2zM/edit#gid=1752874311",
               "https://docs.google.com/spreadsheets/d/1K8Z_802i5DrLc9CbgmWW6AdBjJTWUVnhhtbqU-V5upI/edit#gid=1752874311",
               "https://docs.google.com/spreadsheets/d/1cbQgCwhI0ZoFQ1gAQqzYhiLvHH53gu2bxgOWjbXx-P8/edit#gid=1752874311")
-
+  
+  showModal(modalDialog("Cargando datos ...", footer = NULL))
   docs = lapply(urls, function(url){
     doc = gs4_get(url)
     nombre = doc$name # nombre del archivo
@@ -39,6 +40,7 @@ server = function(input, output, session){
     })
     return(list("Nombre" = nombre, "Hoja" = hojas, "Documentos" = doc))
   })
+  removeModal()
 
   ######################## FUNCIONES ###########################
   
@@ -59,10 +61,10 @@ server = function(input, output, session){
       if (puntos <= ideal) { # Escala del 60%
         # (0,1), (60%, 4)
         corte = 0.6*ideal
-        return(3/corte*puntos + 1)
+        return(round(3/corte*puntos + 1, 1))
       } else {
         # (60%, 4) (ideal, 7)
-        return(3/(ideal - corte)*(puntos - ideal) + 7)
+        return(round(3/(ideal - corte)*(puntos - ideal) + 7, 1))
       }
     })
     return(notas.por.prueba)
@@ -72,7 +74,7 @@ server = function(input, output, session){
     control = as.data.frame(control)
     control = control[,-1]
     notas.por.control = apply(control, 1, function(notas){ # Nota por estudiante en la prueba
-      return(mean(as.numeric(notas))) # Revisar cuando haya notas faltantes
+      return(round(mean(as.numeric(notas)), 1)) # Revisar cuando haya notas faltantes
     })
   }
   
@@ -158,17 +160,20 @@ server = function(input, output, session){
         })
         
         # Transformamos todas las notas en nota final en el curso
-        aux.promedios = matrix(unlist(aux.promedios), byrow = T, nrow = length(aux.promedios[[1]])) # Pasamos de lista a matriz (cada estudiante una columna)
+        aux.promedios = matrix(unlist(aux.promedios), byrow = F, nrow = length(aux.promedios[[1]])) # Pasamos de lista a matriz (cada estudiante una columna)
+        aux.promedios = as.data.frame(aux.promedios)
+        
+        # print(aux.promedios)
+        
         # Esto nos deja con cada alumno en una fila, ahora multiplicamos por los ponderadores y obtenemos la nota final de cada uno
         aux.promedios = apply(aux.promedios, 1, function(notas.alumno){
-          # print(notas.alumno)
-          NP = sum(notas.alumno[-2]*aux.ponderacion[-2,2]) # Nota de presentación
-          NF = notas.alumno[2]*aux.ponderacion[2,2] + NP*(1-aux.ponderacion[2,2])
+          NP = round(sum(notas.alumno[-2]*aux.ponderacion[-2,2]), 1) # Nota de presentación
+          NF = round(notas.alumno[2]*aux.ponderacion[2,2], 1) + round(NP*(1-aux.ponderacion[2,2]), 1)
           return(NF)
         })
         
         # Finalmente obtenemos la media general del curso
-        aux.promedios = mean(aux.promedios)
+        aux.promedios = round(mean(aux.promedios), 1)
         
         # ABORDAR EL HECHO DE TENER NOTAS INCOMPLETAS, USAR na.omit AL MOMENTO DE SACAR PROMEDIOS EN TODO EL CÓDIGO
         return(list("Curso" = curso$Nombre, "Pomedio" = aux.promedios)) # Promedio de de los promedios de las pruebas.
@@ -216,22 +221,24 @@ server = function(input, output, session){
         
         # Agregamos nota de presentación y final
         aux.promedios$NP = apply(aux.promedios, 1, function(notas.alumno){
-          NP = sum(notas.alumno[-2]*aux.ponderacion[-2,2]) # Nota de presentación
+          NP = round(sum(notas.alumno[-2]*aux.ponderacion[-2,2]), 1) # Nota de presentación
           return(NP)
         })
         
         aux.promedios$NF = apply(aux.promedios[-c(dim(aux.promedios)[2])], 1, function(notas.alumno){
-          NP = sum(notas.alumno[-2]*aux.ponderacion[-2,2]) # Nota de presentación
-          NF = notas.alumno[2]*aux.ponderacion[2,2] + NP*(1-aux.ponderacion[2,2]) # Nota final
+          NP = round(sum(notas.alumno[-2]*aux.ponderacion[-2,2]), 1) # Nota de presentación
+          NF = round(notas.alumno[2]*aux.ponderacion[2,2], 1) + round(NP*(1-aux.ponderacion[2,2]), 1) # Nota final
           return(NF)
         })
+        
+        # print(round(mean(aux.promedios$NF),1))
         
         aux.promedios= aux.promedios[c(which(grepl("Prueba", colnames(aux.promedios))),
                                        which(colnames(aux.promedios) == "Controles"),
                                        which(colnames(aux.promedios) == "NP"),
                                        which(colnames(aux.promedios) == "Examen"),
                                        which(colnames(aux.promedios) == "NF"))]
-        aux.promedios = round(aux.promedios, 1)
+        # aux.promedios = round(aux.promedios, 1)
         aux.promedios = rbind(aux.promedios, round(colMeans(aux.promedios), 1))
         rownames(aux.promedios) = c(aux.nombre_alumnos, "Promedio")
         return(aux.promedios)
@@ -295,7 +302,7 @@ server = function(input, output, session){
   output$valueboxes_p1 = renderUI({
     lapply(1:dim(metricas_generales.p1)[1], function(i){
       valueBox(metricas_generales.p1[i,2],
-               format(metricas_generales.p1[i,1], nsmall = 1),
+               metricas_generales.p1[i,1],
                width = 2, color = "blue")
     })
   })
@@ -303,7 +310,7 @@ server = function(input, output, session){
   output$valueboxes_p2 = renderUI({
     lapply(1:dim(metricas_generales.p2)[1], function(i){
       valueBox(metricas_generales.p2[i,2],
-               format(metricas_generales.p1[i,1], nsmall = 1),
+               metricas_generales.p1[i,1],
                width = 2, color = "blue")
     })
   })
@@ -330,19 +337,19 @@ server = function(input, output, session){
   })
   
   output$p1_c1_s1 = DT::renderDataTable({
-    DT::datatable(informacion_cursos.p1[[1]], filter = "top")
+    DT::datatable(informacion_cursos.p1[[1]])
   })
   
   output$p1_c1_s2 = DT::renderDataTable({
-    DT::datatable(informacion_cursos.p1[[2]], filter = "top")
+    DT::datatable(informacion_cursos.p1[[2]])
   })
   
   output$p2_c1_s3 = DT::renderDataTable({
-    DT::datatable(informacion_cursos.p2[[1]], filter = "top")
+    DT::datatable(informacion_cursos.p2[[1]])
   })
   
   output$p2_c2_s1 = DT::renderDataTable({
-    DT::datatable(informacion_cursos.p2[[2]], filter = "top")
+    DT::datatable(informacion_cursos.p2[[2]])
   })
   
   # Automatizamos las pestañas de los detalles de curso, sin necesidad de un renderUI
@@ -376,6 +383,23 @@ server = function(input, output, session){
     })
   })
   
+  # Descargas de los resúmenes de notas de los cursos por profesor
+  output$downloadData_p1 <- downloadHandler(
+    filename = function() { 
+      paste("Profesor1", ".xlsx", sep="")
+    },
+    content = function(file) {
+      write.xlsx(informacion_cursos.p1, file, rowNames = TRUE)
+    }
+  )
   
-
+  output$downloadData_p2 <- downloadHandler(
+    filename = function() { 
+      paste("Profesor2", ".xlsx", sep="")
+    },
+    content = function(file) {
+      write.xlsx(informacion_cursos.p2, file, rowNames = TRUE)
+    }
+  )
+  
 }

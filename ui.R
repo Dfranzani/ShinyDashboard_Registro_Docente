@@ -1,17 +1,11 @@
 library(shiny) # paquete principal del panel de visualización
 library(shinydashboard) # paquete que modifica la estructura de comandos shiny (algunos), pero da un mejor aspecto visual
-# library(fmsb) # gráfico de araña
 library(openxlsx) # carga de archivos
 library(ggplot2) # gráficos
-# library(gridExtra) # agrupar gráficos de ggplot
 library(viridis) # paleta de colores
-# library(kableExtra) # renderizado de tablas
 library(dplyr) # tubería
-# library(ggpubr) # agrupar gráficos de ggplot con una sola leyenda
-# library(plotly) # gráficos interactivos (se puede combinar con ggplot fácilmente)
 library(googlesheets4) # Conección a la cuenta de Google Drive
 library(Cairo) # mejora resolución y renderizado de gráficos
-# library(shinyjs) # modificar objetos shiny con JS
 library(DT) # paquete para renderizar DataTable
 options(shiny.usecairo = T)
 
@@ -45,14 +39,14 @@ sidebar = dashboardSidebar(
 #### Profesor 1
 
 promedios_profesor1 = uiOutput("valueboxes_p1")
-# Añadir tasas de aprobación del curso (ver al final)
+data_p1 = downloadButton('downloadData_p1', 'Descargar resúmenes de notas')
 profesor1_curso1_seccion1 =  DT::dataTableOutput("p1_c1_s1")
 profesor1_curso1_seccion2 =  DT::dataTableOutput("p1_c1_s2")
 
 #### Profesor 2
 
 promedios_profesor2 = uiOutput("valueboxes_p2")
-# Añadir tasas de aprobación del curso (ver al final)
+data_p2 = downloadButton('downloadData_p2', 'Descargar resúmenes de notas')
 profesor2_curso1_seccion3 =  DT::dataTableOutput("p2_c1_s3")
 profesor2_curso2_seccion1 =  DT::dataTableOutput("p2_c2_s1")
 
@@ -67,23 +61,29 @@ promedios_cursos = plotOutput("resultados_cursos")
 
 all1 = fluidPage(
   fluidRow(
-    box(id = "Profesor1", width = 12, solidHeader = TRUE, collapsed = TRUE, collapsible = TRUE,
+    box(id = "Profesor1-main", width = 12, solidHeader = TRUE, collapsed = TRUE, collapsible = TRUE,
         title = "Profesor 1",
-        tabBox(id = "Resumen1", width = 12,
-              tabPanel(id = "p1r1.1", title = "Resumen General",
+        tabBox(id = "Profesor1", width = 12,
+              tabPanel(id = "general1", title = "Resumen General",
                        fluidRow(
+                         column(width = 12, data_p1),
                          column(width = 12, h3("Promedio general por curso")),
                          column(width = 12, promedios_profesor1)
                          )
                        ),
-              tabPanel(id = "c1_s1", title = "Curso 1 - sección 1", profesor1_curso1_seccion1,
+              tabPanel(id = "Curso1-seccion1-main", title = "Curso 1 - sección 1", 
+                       fluidRow(
+                         column(width = 12, profesor1_curso1_seccion1)
+                         ),
                        hr(),
-                       # Tablas por prueba, automatizaremos el ingreso con insertTab
                        tabBox(id = "Curso1-seccion1", title = "Detalle de las evaluaciones", width = NULL
                               # Automatización de los tab panel
                               )
                        ),
-              tabPanel(id = "c1_s2", title = "Curso 1 - sección 2", profesor1_curso1_seccion2,
+              tabPanel(id = "Curso1-seccion2-main", title = "Curso 1 - sección 2",
+                       fluidRow(
+                         column(width = 12, profesor1_curso1_seccion2)
+                       ),
                        hr(),
                        tabBox(id = "Curso1-seccion2", title = "Detalle de las evaluaciones", width = NULL
                               # Automatización de los tab panel
@@ -91,22 +91,29 @@ all1 = fluidPage(
                        )
               )
         ),
-    box(id = "Profesor2", width = 12, solidHeader = TRUE, collapsed = TRUE, collapsible = TRUE,
+    box(id = "Profesor2-main", width = 12, solidHeader = TRUE, collapsed = TRUE, collapsible = TRUE,
         title = "Profesor 2",
-        tabBox(id = "Resumen2", width = 12,
-               tabPanel(id = "p2r2.1", title = "Resumen General",
+        tabBox(id = "Profesor2", width = 12,
+               tabPanel(id = "general2", title = "Resumen General",
                         fluidRow(
+                          column(width = 12, data_p2),
                           column(width = 12, h3("Promedio general por curso")),
                           column(width = 12, promedios_profesor2)
                           )
                         ),
-               tabPanel(id = "c1_s3", title = "Curso 1 - sección 3", profesor2_curso1_seccion3,
+               tabPanel(id = "Curso1-seccion3-main", title = "Curso 1 - sección 3",
+                        fluidRow(
+                          column(width = 12, profesor2_curso1_seccion3)
+                        ),
                         hr(),
                         tabBox(id = "Curso1-seccion3", title = "Detalle de las evaluaciones", width = NULL
                                # Automatización de los tab panel
                                )
                         ),
-               tabPanel(id = "c2_s1", title = "Curso 2 - sección 1", profesor2_curso2_seccion1,
+               tabPanel(id = "Curso2-seccion1-main", title = "Curso 2 - sección 1",
+                        fluidRow(
+                          column(width = 12, profesor2_curso2_seccion1)
+                        ),
                         hr(),
                         tabBox(id = "Curso2-seccion1", title = "Detalle de las evaluaciones", width = NULL
                                # Automatización de los tab panel

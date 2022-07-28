@@ -5,9 +5,9 @@ account: dfranzani
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 6681129
-bundleId: 6125294
+bundleId: 6137299
 url: https://dfranzani.shinyapps.io/ShinyDashboard_Registro_Docente/
-when: 1658546905.94124
-lastSyncTime: 1658546905.94125
+when: 1658904798.46145
+lastSyncTime: 1658904798.46146
 asMultiple: FALSE
 asStatic: FALSE
